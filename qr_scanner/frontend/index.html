@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<style>
+  body { margin: 0; font-family: "Source Sans Pro", system-ui, sans-serif; background: transparent; color: #31333F; }
+  @media (prefers-color-scheme: dark) { body { color: #FAFAFA; } }
+  #reader { width: 100%; max-width: 520px; margin: 0 auto; border-radius: 12px; overflow: hidden; }
+  #reader video { border-radius: 12px; }
+  #status { text-align: center; padding: 10px 8px 4px; font-size: 15px; }
+  button { display: block; margin: 8px auto 4px; padding: 10px 20px; border-radius: 8px;
+           border: 1px solid rgba(128,128,128,.5); background: transparent; color: inherit; font-size: 15px; }
+</style>
+<script src="html5-qrcode.min.js"></script>
+</head>
+<body>
+<div id="reader"></div>
+<div id="status">Abrindo a câmera...</div>
+<button id="again" style="display:none">Ler outro QR Code</button>
+<script>
+  function send(type, data) {
+    window.parent.postMessage(Object.assign({ isStreamlitMessage: true, type: type }, data || {}), "*");
+  }
+  function setHeight() { send("streamlit:setFrameHeight", { height: document.body.scrollHeight + 12 }); }
+
+  const status = document.getElementById("status");
+  const again = document.getElementById("again");
+  const scanner = new Html5Qrcode("reader", {
+    formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE],
+    experimentalFeatures: { useBarCodeDetectorIfSupported: true },
+    verbose: false
+  });
+  let lendo = false;
+
+  async function iniciar() {
+    again.style.display = "none";
+    status.textContent = "Aponte para o QR Code do cupom";
+    try {
+      await scanner.start(
+        { facingMode: "environment" },
+        {
+          fps: 15,
+          qrbox: (w, h) => { const s = Math.floor(Math.min(w, h) * 0.8); return { width: s, height: s }; },
+          videoConstraints: { facingMode: "environment", width: { ideal: 1920 }, height: { ideal: 1080 } }
+        },
+        aoLer,
+        () => {}
+      );
+      lendo = true;
+    } catch (e) {
+      status.textContent = "Não consegui abrir a câmera. Libere o acesso à câmera para este site no navegador e recarregue a página.";
+    }
+    setHeight();
+  }
+
+  async function aoLer(texto) {
+    if (!lendo) return;
+    lendo = false;
+    try { await scanner.stop(); } catch (e) {}
+    if (navigator.vibrate) navigator.vibrate(120);
+    status.textContent = "QR Code lido.";
+    again.style.display = "block";
+    send("streamlit:setComponentValue", { value: { texto: texto, ts: Date.now() }, dataType: "json" });
+    setHeight();
+  }
+
+  again.addEventListener("click", iniciar);
+  new ResizeObserver(setHeight).observe(document.body);
+  send("streamlit:componentReady", { apiVersion: 1 });
+  iniciar();
+</script>
+</body>
+</html>
