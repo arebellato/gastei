@@ -8,6 +8,7 @@ import streamlit as st
 import categorize as cat
 import db
 import nfce
+from qr_scanner import qr_scanner
 
 st.set_page_config(page_title="Notinha", page_icon="🛒", layout="centered")
 
@@ -108,42 +109,55 @@ def itens_do_editor(df):
 
 
 # ================= Páginas =================
+def processar_link(url):
+    url = (url or "").strip()
+    if not url:
+        return
+    if db.compra_existe(nfce.extrair_chave(url)):
+        st.warning("Essa nota já está registrada.")
+        return
+    with st.spinner("Consultando a SEFAZ..."):
+        try:
+            nota = nfce.ler_nfce(url)
+        except Exception as e:
+            st.error(f"Não consegui ler a nota. {e}")
+            st.info("Se continuar dando erro, use o lançamento manual.")
+            return
+    if db.compra_existe(nota["chave"]):
+        st.warning("Essa nota já está registrada.")
+        return
+    with st.spinner("Organizando os itens..."):
+        st.session_state.nota = nota
+        st.session_state.rev_nota = montar_revisao(nota["itens"])
+
+
 def pagina_nota():
     st.subheader("Ler cupom fiscal")
-    st.caption("Jeito mais garantido: aponte a câmera do celular para o QR Code, "
-               "copie o link e cole aqui.")
-    url = st.text_input("Link do QR Code", placeholder="https://www.nfce.fazenda.sp.gov.br/...")
+    modo = st.radio("Como ler?", ["📷 Câmera", "🔗 Colar link", "🖼️ Foto"],
+                    horizontal=True, label_visibility="collapsed")
 
-    with st.expander("📷 Ler pela foto do QR Code"):
+    if modo == "📷 Câmera":
+        st.caption("Aponte para o QR Code e segure firme. Ele lê sozinho.")
+        lido = qr_scanner(key="scanner")
+        if lido and lido.get("ts") != st.session_state.get("ultimo_scan"):
+            st.session_state.ultimo_scan = lido["ts"]
+            processar_link(lido.get("texto"))
+
+    elif modo == "🔗 Colar link":
+        url = st.text_input("Link do QR Code", placeholder="https://www.nfce.fazenda.sp.gov.br/...")
+        if st.button("Ler nota", type="primary", disabled=not url):
+            processar_link(url)
+
+    else:
         foto = st.camera_input("Tirar foto")
         arquivo = st.file_uploader("Ou escolher da galeria", type=["jpg", "jpeg", "png", "webp"])
         img = foto or arquivo
         if img is not None:
             lido = nfce.decodificar_qr(img.getvalue())
-            if lido:
-                st.success("QR Code lido.")
-                url = url or lido
-            else:
-                st.warning("Não consegui ler o QR Code. Chegue mais perto, com boa luz, "
-                           "ou cole o link.")
-
-    if st.button("Ler nota", type="primary", disabled=not url):
-        if db.compra_existe(nfce.extrair_chave(url)):
-            st.warning("Essa nota já está registrada.")
-            return
-        with st.spinner("Consultando a SEFAZ..."):
-            try:
-                nota = nfce.ler_nfce(url)
-            except Exception as e:
-                st.error(f"Não consegui ler a nota. {e}")
-                st.info("Se continuar dando erro, use o lançamento manual.")
-                return
-        if db.compra_existe(nota["chave"]):
-            st.warning("Essa nota já está registrada.")
-            return
-        with st.spinner("Organizando os itens..."):
-            st.session_state.nota = nota
-            st.session_state.rev_nota = montar_revisao(nota["itens"])
+            if not lido:
+                st.warning("Não consegui ler o QR Code. Chegue mais perto, com boa luz, ou use a câmera ao vivo.")
+            elif st.button("Ler nota", type="primary"):
+                processar_link(lido)
 
     nota = st.session_state.get("nota")
     if not nota:
