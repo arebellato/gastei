@@ -1,0 +1,11 @@
+streamlit>=1.40
+supabase>=2.10
+pandas
+altair
+requests
+beautifulsoup4
+lxml
+rapidfuzz
+opencv-python-headless
+numpy
+anthropic
