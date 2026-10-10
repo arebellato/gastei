@@ -224,3 +224,29 @@ def mover_descricao(descricao_norm, novo_produto_id):
         if ids:
             sb.table("itens").update({"produto_id": novo_produto_id}).in_("id", ids).execute()
     limpar_cache()
+
+
+# ---------- Perfis ----------
+def carregar_usuarios(nomes_iniciais):
+    """Lê os perfis e cria os que estão em USUARIOS e ainda não existem."""
+    from perfis import PADROES
+    sb = cliente()
+    rows = sb.table("usuarios").select("nome,senha_hash,icone,cor").execute().data
+    existentes = {r["nome"] for r in rows}
+    novos = []
+    for i, nome in enumerate(nomes_iniciais):
+        if nome not in existentes:
+            icone, cor = PADROES[i % len(PADROES)]
+            novos.append({"nome": nome, "icone": icone, "cor": cor})
+    if novos:
+        rows += sb.table("usuarios").insert(novos).execute().data
+    ordem = {n: i for i, n in enumerate(nomes_iniciais)}
+    return sorted(rows, key=lambda r: ordem.get(r["nome"], 99))
+
+
+def salvar_senha(nome, senha_hash):
+    cliente().table("usuarios").update({"senha_hash": senha_hash}).eq("nome", nome).execute()
+
+
+def salvar_aparencia(nome, icone, cor):
+    cliente().table("usuarios").update({"icone": icone, "cor": cor}).eq("nome", nome).execute()

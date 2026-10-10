@@ -8,6 +8,7 @@ import streamlit as st
 import categorize as cat
 import db
 import nfce
+import perfis
 from qr_scanner import qr_scanner
 
 st.set_page_config(page_title="Notinha", page_icon="🛒", layout="centered")
@@ -36,25 +37,112 @@ def csv_br(df):
     return df.to_csv(index=False, sep=";", decimal=",").encode("utf-8-sig")
 
 
-# ================= Login =================
+# ================= Login e perfis =================
+def usuarios():
+    return db.carregar_usuarios(list(st.secrets.get("USUARIOS", ["Alan", "Gi"])))
+
+
+def usuario_atual():
+    return next((u for u in usuarios() if u["nome"] == st.session_state.get("usuario")), None)
+
+
 def login():
     if st.session_state.get("logado"):
         return True
     st.title("🧾 Notinha")
-    senha = st.text_input("Senha", type="password")
-    usuarios = list(st.secrets.get("USUARIOS", ["Alan", "Gi"]))
-    quem = st.radio("Quem está usando?", usuarios, horizontal=True)
-    if st.button("Entrar", type="primary"):
-        if senha == st.secrets["APP_SENHA"]:
+    lista = usuarios()
+    sel = st.session_state.get("login_sel")
+
+    if not sel:
+        st.subheader("Quem está usando?")
+        cols = st.columns(min(len(lista), 4))
+        for i, u in enumerate(lista):
+            with cols[i % len(cols)]:
+                st.markdown(perfis.avatar_html(u["icone"], u["cor"], 96), unsafe_allow_html=True)
+                if st.button(u["nome"], key=f"perfil_{u['nome']}", use_container_width=True):
+                    st.session_state.login_sel = u["nome"]
+                    st.rerun()
+        return False
+
+    u = next(x for x in lista if x["nome"] == sel)
+    st.markdown(perfis.avatar_html(u["icone"], u["cor"], 110), unsafe_allow_html=True)
+    st.markdown(f"<h3 style='text-align:center;margin-top:0'>{u['nome']}</h3>", unsafe_allow_html=True)
+    if not u.get("senha_hash"):
+        st.info("Primeiro acesso: entre com a senha inicial do app. Depois você cria a sua.")
+    with st.form("form_login"):
+        senha = st.text_input("Senha", type="password")
+        entrar = st.form_submit_button("Entrar", type="primary", use_container_width=True)
+    if entrar:
+        if u.get("senha_hash"):
+            ok = perfis.verificar(senha, u["senha_hash"])
+        else:
+            ok = senha == st.secrets["APP_SENHA"]
+        if ok:
             st.session_state.logado = True
-            st.session_state.usuario = quem
+            st.session_state.usuario = u["nome"]
+            st.session_state.precisa_senha = not u.get("senha_hash")
             st.rerun()
         else:
             st.error("Senha incorreta.")
+    if st.button("Trocar de perfil"):
+        st.session_state.pop("login_sel", None)
+        st.rerun()
     return False
 
 
+def tela_criar_senha():
+    u = usuario_atual()
+    st.title("🧾 Notinha")
+    st.markdown(perfis.avatar_html(u["icone"], u["cor"], 96), unsafe_allow_html=True)
+    st.subheader(f"Oi, {u['nome']}! Crie sua senha")
+    st.caption("A partir de agora, só ela vai abrir o seu perfil.")
+    with st.form("form_nova_senha"):
+        s1 = st.text_input("Nova senha", type="password")
+        s2 = st.text_input("Repita a senha", type="password")
+        ok = st.form_submit_button("Salvar senha", type="primary", use_container_width=True)
+    if ok:
+        if len(s1) < 4:
+            st.error("Use pelo menos 4 caracteres.")
+        elif s1 != s2:
+            st.error("As senhas não são iguais.")
+        else:
+            db.salvar_senha(u["nome"], perfis.gerar_hash(s1))
+            st.session_state.precisa_senha = False
+            st.session_state.menu = "👤 Perfil"   # já leva para escolher o ícone
+            st.session_state.boas_vindas = True
+            st.rerun()
+
+
+def seletor_aparencia(u):
+    st.session_state.setdefault("icone_tmp", u["icone"])
+    st.session_state.setdefault("cor_tmp", u["cor"])
+    previa = st.empty()
+
+    tema = st.selectbox("Tema", list(perfis.ICONES))
+    escolhido = st.pills("Ícone", perfis.ICONES[tema], selection_mode="single", key=f"pill_{tema}")
+    if escolhido:
+        st.session_state.icone_tmp = escolhido
+
+    cor = st.pills("Cor de fundo", list(perfis.CORES), selection_mode="single", key="pill_cor")
+    if cor:
+        st.session_state.cor_tmp = perfis.CORES[cor]
+    with st.expander("Outra cor"):
+        livre = st.color_picker("Escolha", st.session_state.cor_tmp)
+        if livre != st.session_state.cor_tmp and st.button("Usar esta cor"):
+            st.session_state.cor_tmp = livre
+            st.rerun()
+
+    previa.markdown(perfis.avatar_html(st.session_state.icone_tmp, st.session_state.cor_tmp, 120),
+                    unsafe_allow_html=True)
+    if st.button("💾 Salvar ícone", type="primary", use_container_width=True):
+        db.salvar_aparencia(u["nome"], st.session_state.icone_tmp, st.session_state.cor_tmp)
+        st.success("Ícone salvo.")
+
+
 if not login():
+    st.stop()
+if st.session_state.get("precisa_senha"):
+    tela_criar_senha()
     st.stop()
 
 
@@ -535,6 +623,39 @@ def pagina_produtos():
         st.rerun()
 
 
+# ================= Perfil =================
+def pagina_perfil():
+    u = usuario_atual()
+    if st.session_state.pop("boas_vindas", False):
+        st.success("Senha criada. Agora escolha seu ícone.")
+    st.subheader("Seu ícone")
+    seletor_aparencia(u)
+
+    st.divider()
+    st.subheader("Trocar senha")
+    with st.form("form_troca_senha", clear_on_submit=True):
+        atual = st.text_input("Senha atual", type="password")
+        s1 = st.text_input("Nova senha", type="password")
+        s2 = st.text_input("Repita a nova senha", type="password")
+        ok = st.form_submit_button("Trocar senha")
+    if ok:
+        if not perfis.verificar(atual, u.get("senha_hash") or ""):
+            st.error("Senha atual incorreta.")
+        elif len(s1) < 4:
+            st.error("Use pelo menos 4 caracteres.")
+        elif s1 != s2:
+            st.error("As senhas novas não são iguais.")
+        else:
+            db.salvar_senha(u["nome"], perfis.gerar_hash(s1))
+            st.success("Senha trocada.")
+
+    st.divider()
+    if st.button("Sair", use_container_width=True):
+        for k in list(st.session_state.keys()):
+            del st.session_state[k]
+        st.rerun()
+
+
 # ================= Navegação =================
 PAGINAS = {
     "📷 Nota": pagina_nota,
@@ -542,7 +663,11 @@ PAGINAS = {
     "📊 Análises": pagina_analises,
     "🧾 Histórico": pagina_historico,
     "🏷️ Produtos": pagina_produtos,
+    "👤 Perfil": pagina_perfil,
 }
-escolha = st.radio("Menu", list(PAGINAS), horizontal=True, label_visibility="collapsed")
-st.caption(f"Usando como {st.session_state.usuario}")
+eu = usuario_atual()
+if eu:
+    st.markdown(perfis.avatar_html(eu["icone"], eu["cor"], 30, inline=True) + f"<b>{eu['nome']}</b>",
+                unsafe_allow_html=True)
+escolha = st.radio("Menu", list(PAGINAS), horizontal=True, label_visibility="collapsed", key="menu")
 PAGINAS[escolha]()
