@@ -12,7 +12,7 @@ MODELO_CLAUDE = "claude-haiku-5-5"
 # Quando várias batem, vence a palavra-chave mais longa.
 REGRAS = {
     "Hortifruti": {
-        "BANANA": "Banana", "BAN": "Banana", "MACA": "Maçã", "TOMATE": "Tomate", "ALFACE": "Alface",
+        "BANANA": "Banana", "AVOCADO": "Abacate", "BAN": "Banana", "MACA": "Maçã", "TOMATE": "Tomate", "ALFACE": "Alface",
         "BATATA": "Batata", "BATATA DOCE": "Batata-doce", "CEBOLA": "Cebola", "ALHO": "Alho",
         "LIMAO": "Limão", "LARANJA": "Laranja", "MAMAO": "Mamão", "PAPAYA": "Mamão",
         "CENOURA": "Cenoura", "ABOBRINHA": "Abobrinha", "ABOBORA": "Abóbora", "BROCOLIS": "Brócolis",
@@ -24,21 +24,21 @@ REGRAS = {
         "MANDIOCA": "Mandioca", "MANDIOQUINHA": "Mandioquinha", "BETERRABA": "Beterraba",
         "CHUCHU": "Chuchu", "KIWI": "Kiwi", "PERA": "Pera", "MARACUJA": "Maracujá", "GOIABA": "Goiaba",
         "TANGERINA": "Tangerina", "MEXERICA": "Tangerina", "PONKAN": "Tangerina", "GENGIBRE": "Gengibre",
-        "BERINJELA": "Berinjela", "VAGEM": "Vagem", "QUIABO": "Quiabo", "MILHO VERDE": "Milho verde",
+        "BERINJELA": "Berinjela", "VAGEM": "Vagem", "QUIABO": "Quiabo", "ESPIGA": "Milho verde", "MILHO ESPIGA": "Milho verde", "SALADA": "Salada", "MIX FOLHAS": "Salada",
         "COGUMELO": "Cogumelo", "CHAMPIGNON": "Cogumelo", "MIRTILO": "Mirtilo", "AMEIXA": "Ameixa",
         "PESSEGO": "Pêssego", "COCO": "Coco", "HORTIFRUTI": "Hortifruti",
     },
     "Carnes e peixes": {
         "CARNE": "Carne bovina", "BOV": "Carne bovina", "CARNE MOIDA": "Carne moída", "MOIDA": "Carne moída",
         "FRANGO": "Frango", "FGO": "Frango", "PEITO": "Peito de frango", "PEITO FRANGO": "Peito de frango",
-        "PEITO DE FRANGO": "Peito de frango", "FILE PEITO": "Peito de frango", "COXA": "Coxa de frango",
+        "PEITO DE FRANGO": "Peito de frango", "FILE PEITO": "Peito de frango", "FILE FRANGO": "Peito de frango", "FILE DE FRANGO": "Peito de frango", "COXA": "Coxa de frango",
         "SOBRECOXA": "Sobrecoxa", "ASA": "Asa de frango", "COXINHA DA ASA": "Asa de frango",
         "PATINHO": "Patinho", "ALCATRA": "Alcatra", "PICANHA": "Picanha", "CONTRA FILE": "Contrafilé",
         "FRALDINHA": "Fraldinha", "COSTELA": "Costela", "LINGUICA": "Linguiça", "LING": "Linguiça",
         "TILAPIA": "Tilápia", "SALMAO": "Salmão", "PEIXE": "Peixe", "CAMARAO": "Camarão", "ACEM": "Acém",
         "BACON": "Bacon", "COXAO": "Coxão", "MAMINHA": "Maminha", "LOMBO": "Lombo suíno",
         "PERNIL": "Pernil", "CUPIM": "Cupim", "MIGNON": "Filé mignon", "BISTECA": "Bisteca",
-        "SALSICHA": "Salsicha", "MUSCULO": "Músculo", "CORACAO": "Coração de frango", "FIGADO": "Fígado",
+        "MUSCULO": "Músculo", "CORACAO": "Coração de frango", "FIGADO": "Fígado",
         "BACALHAU": "Bacalhau", "MERLUZA": "Merluza", "SUINO": "Carne suína", "SUINA": "Carne suína",
         "FILE": "Filé", "CARNE SECA": "Carne-seca", "CHARQUE": "Carne-seca",
     },
@@ -52,11 +52,11 @@ REGRAS = {
         "PEITO DE PERU": "Peito de peru", "SALAME": "Salame", "MORTADELA": "Mortadela", "OVO": "Ovos",
         "OVOS": "Ovos", "RICOTA": "Ricota", "COTTAGE": "Cottage", "BEBIDA LACTEA": "Bebida láctea",
         "LEITE FERMENTADO": "Leite fermentado", "YAKULT": "Leite fermentado",
-        "PETIT SUISSE": "Petit suisse", "DANONINHO": "Petit suisse", "CREAM CHEESE": "Cream cheese",
-        "PROVOLONE": "Provolone", "GORGONZOLA": "Gorgonzola", "COPA": "Copa", "CHANTILLY": "Chantilly",
+        "PETIT SUISSE": "Petit suisse", "DANONINHO": "Petit suisse", "CREAM CHEESE": "Cream cheese", "CRCHEESE": "Cream cheese", "CR CHEESE": "Cream cheese", "MANT": "Manteiga", "IOGLIQ": "Iogurte", "SALSADIA": "Salame",
+        "PROVOLONE": "Provolone", "GORGONZOLA": "Gorgonzola", "COPA": "Copa", "SALSICHA": "Salsicha", "CHANTILLY": "Chantilly",
     },
     "Padaria": {
-        "PAO": "Pão", "PAO FRANCES": "Pão francês", "FRANCES": "Pão francês", "PAO FORMA": "Pão de forma",
+        "PAO": "Pão", "PAOZINHO": "Pão", "PAO FRANCES": "Pão francês", "FRANCES": "Pão francês", "PAO FORMA": "Pão de forma",
         "PAO DE FORMA": "Pão de forma", "BISNAGUINHA": "Bisnaguinha", "BOLO": "Bolo", "TORRADA": "Torrada",
         "CROISSANT": "Croissant", "SONHO": "Sonho", "PAO DE QUEIJO": "Pão de queijo",
         "PAO QUEIJO": "Pão de queijo", "PANETONE": "Panetone", "CHOCOTONE": "Panetone", "ROSCA": "Rosca",
@@ -70,9 +70,9 @@ REGRAS = {
         "CAFE": "Café", "CAPSULA": "Café em cápsula", "FARINHA": "Farinha", "FARINHA DE TRIGO": "Farinha de trigo",
         "MOLHO": "Molho", "MOLHO TOMATE": "Molho de tomate", "MOLHO DE TOMATE": "Molho de tomate",
         "PASSATA": "Molho de tomate", "EXTRATO": "Extrato de tomate", "ATUM": "Atum", "SARDINHA": "Sardinha",
-        "MILHO": "Milho", "ERVILHA": "Ervilha", "AVEIA": "Aveia", "GRANOLA": "Granola", "TEMPERO": "Tempero",
+        "MILHO": "Milho", "MILHO VERDE": "Milho", "BATATA PALHA": "Batata palha", "ERVILHA": "Ervilha", "AVEIA": "Aveia", "GRANOLA": "Granola", "TEMPERO": "Tempero",
         "VINAGRE": "Vinagre", "MAIONESE": "Maionese", "KETCHUP": "Ketchup", "CATCHUP": "Ketchup",
-        "MOSTARDA": "Mostarda", "FAROFA": "Farofa", "FUBA": "Fubá", "LENTILHA": "Lentilha",
+        "MOSTARDA": "Mostarda", "MOSTAR": "Mostarda", "POMODORI": "Tomate pelado", "PELATI": "Tomate pelado", "TOMATE PELADO": "Tomate pelado", "FAROFA": "Farofa", "FUBA": "Fubá", "LENTILHA": "Lentilha",
         "GRAO DE BICO": "Grão-de-bico", "ACHOCOLATADO": "Achocolatado", "NESCAU": "Achocolatado",
         "TODDY": "Achocolatado", "CEREAL": "Cereal", "SUCRILHOS": "Cereal", "MEL": "Mel",
         "TAPIOCA": "Tapioca", "PALMITO": "Palmito", "AZEITONA": "Azeitona", "CALDO": "Caldo",
@@ -110,14 +110,14 @@ REGRAS = {
     },
     "Doces e snacks": {
         "CHOCOLATE": "Chocolate", "CHOC": "Chocolate", "KITKAT": "Chocolate", "KIT KAT": "Chocolate",
-        "BOMBOM": "Bombom", "BISCOITO": "Biscoito", "BISC": "Biscoito", "BOLACHA": "Biscoito",
+        "BOMBOM": "Bombom", "BISCOITO": "Biscoito", "BISC": "Biscoito", "BOLACHA": "Biscoito", "PIRAQUE": "Biscoito", "AGUA E SAL": "Biscoito", "CREAM CRACKER": "Biscoito", "CROSTATA": "Crostata",
         "COOKIE": "Biscoito", "WAFER": "Biscoito", "BALA": "Bala", "GOMA": "Bala", "CHICLETE": "Chiclete",
         "SALGADINHO": "Salgadinho", "DORITOS": "Salgadinho", "BATATA CHIPS": "Batata chips",
-        "CHIPS": "Batata chips", "RUFFLES": "Batata chips", "AMENDOIM": "Amendoim", "PACOCA": "Paçoca",
+        "CHIPS": "Batata chips", "RUFFLES": "Batata chips", "AMENDOIM": "Amendoim", "PACOCA": "Paçoca", "COCADA": "Cocada", "MANTECAL": "Doce",
         "CASTANHA": "Castanha", "MIX NUTS": "Castanha", "UVA PASSA": "Uva-passa", "DOCE": "Doce",
         "DOCE DE LEITE": "Doce de leite", "PIPOCA": "Pipoca", "BARRA CEREAL": "Barra de cereal",
         "BARRA DE CEREAL": "Barra de cereal", "BARRA PROTEINA": "Barra de proteína",
-        "LEITE CONDENSADO": "Leite condensado", "LT COND": "Leite condensado",
+        "LEITE CONDENSADO": "Leite condensado", "LT COND": "Leite condensado", "LEITE COND": "Leite condensado", "CONDMOCA": "Leite condensado", "MOCA": "Leite condensado",
         "NUTELLA": "Creme de avelã", "CREME AVELA": "Creme de avelã", "GELATINA": "Gelatina",
         "PUDIM": "Pudim", "SOBREMESA": "Sobremesa", "MOUSSE": "Sobremesa",
     },
@@ -158,7 +158,7 @@ REGRAS = {
     "Utilidades": {
         "PILHA": "Pilha", "LAMPADA": "Lâmpada", "PAPEL ALUMINIO": "Papel-alumínio",
         "PAPEL ALUM": "Papel-alumínio", "FILME PVC": "Filme plástico", "PAPEL FILME": "Filme plástico",
-        "GUARDANAPO": "Guardanapo", "PAPEL TOALHA": "Papel-toalha", "PAP TOALHA": "Papel-toalha",
+        "GUARDANAPO": "Guardanapo", "PAPEL TOALHA": "Papel-toalha", "TOALHA PAPEL": "Papel-toalha", "FILTRO": "Filtro de café", "FILTRO CAFE": "Filtro de café", "FILTRO PAPEL": "Filtro de café", "PAP TOALHA": "Papel-toalha",
         "PAPEL MANTEIGA": "Papel-manteiga", "SACO FREEZER": "Saco para freezer", "CARVAO": "Carvão",
         "FOSFORO": "Fósforo", "ISQUEIRO": "Isqueiro", "ACENDEDOR": "Acendedor", "VELA": "Vela",
         "SACOLA": "Sacola", "COPO DESC": "Descartáveis", "COPO DESCARTAVEL": "Descartáveis",
@@ -186,6 +186,17 @@ def regra(descricao: str, categorias=None):
             continue
         for chave, nome in mapa.items():
             if len(chave) > tam and f" {chave} " in n:
+                melhor, tam = (nome, cat), len(chave)
+    if melhor:
+        return melhor
+    # Cupom costuma grudar palavras (CERVBADEN, MANTPORTO): tenta como começo de palavra
+    for cat, mapa in REGRAS.items():
+        if categorias and cat not in categorias:
+            continue
+        for chave, nome in mapa.items():
+            if " " in chave or len(chave) < 4 or len(chave) <= tam:
+                continue
+            if re.search(rf" {chave}[A-Z]", n):
                 melhor, tam = (nome, cat), len(chave)
     return melhor
 
