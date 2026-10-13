@@ -156,32 +156,59 @@ def montar_revisao(itens):
     return pd.DataFrame(linhas)
 
 
-def editor_revisao(df, key):
-    st.caption("✅ já conhecido · 🔁 parecido com um que você já tem · 🆕 novo. "
-               "Ajuste o nome padrão e a categoria se precisar. Itens com o mesmo nome padrão "
-               "são tratados como o mesmo produto nas análises.")
-    return st.data_editor(
-        df, key=key, hide_index=True, use_container_width=True,
-        column_order=["status", "descricao", "valor_total", "produto", "categoria"],
-        disabled=["status", "descricao", "valor_total"],
-        column_config={
-            "status": st.column_config.TextColumn("", width="small"),
-            "descricao": st.column_config.TextColumn("Na nota"),
-            "valor_total": st.column_config.NumberColumn("Valor", format=MOEDA),
-            "produto": st.column_config.TextColumn("Produto", required=True),
-            "categoria": st.column_config.SelectboxColumn(
-                "Categoria", options=db.carregar_categorias(), required=True),
-        },
-    )
+NOVA_CAT = "➕ Nova"
 
 
-def itens_do_editor(df):
+def _criar_categoria(key, key_txt):
+    nome = (st.session_state.get(key_txt) or "").strip()
+    if nome:
+        db.adicionar_categoria(nome)
+        st.session_state[key] = nome
+        st.session_state[key_txt] = ""
+
+
+def escolher_categoria(key, atual):
+    """Botões de categoria (fáceis de tocar no celular) + opção de criar uma nova."""
+    cats = db.carregar_categorias()
+    if st.session_state.get(key) not in cats + [NOVA_CAT]:
+        st.session_state[key] = atual if atual in cats else None
+    st.pills("Categoria", cats + [NOVA_CAT], selection_mode="single", key=key)
+    if st.session_state.get(key) == NOVA_CAT:
+        c1, c2 = st.columns([3, 1], vertical_alignment="bottom")
+        c1.text_input("Nome da nova categoria", key=f"{key}_txt", placeholder="Ex.: Festa, Bebê, Farmácia")
+        c2.button("Criar", key=f"{key}_btn", on_click=_criar_categoria, args=(key, f"{key}_txt"),
+                  use_container_width=True)
+
+
+def categoria_escolhida(key, atual):
+    v = st.session_state.get(key)
+    return v if v and v != NOVA_CAT else atual
+
+
+def revisao_itens(df, prefixo):
+    """Lista os itens em cartões. Os novos e os 'Outros' já vêm abertos."""
+    st.caption("✅ conhecido · 🔁 vai juntar com um que você já tem · 🆕 novo. "
+               "Toque num item para mudar o nome ou a categoria.")
     itens = []
-    for r in df.to_dict("records"):
-        r["produto"] = (r.get("produto") or r["descricao"]).strip()
-        r["categoria"] = r.get("categoria") or "Outros"
+    for i, r in enumerate(df.to_dict("records")):
+        kp, kc = f"{prefixo}_p{i}", f"{prefixo}_c{i}"
+        st.session_state.setdefault(kp, r["produto"])
+        prod = st.session_state[kp] or r["produto"]
+        cat = categoria_escolhida(kc, r["categoria"])
+        aberto = r["status"] == "🆕" or cat == "Outros"
+        with st.expander(f"{r['status']} **{prod}** · {cat} · {brl(r['valor_total'])}", expanded=aberto):
+            st.caption(f"No cupom: {r['descricao']}")
+            st.text_input("Produto", key=kp)
+            escolher_categoria(kc, r["categoria"])
+        r["produto"] = (st.session_state[kp] or r["descricao"]).strip()
+        r["categoria"] = categoria_escolhida(kc, r["categoria"]) or "Outros"
         itens.append(r)
     return itens
+
+
+def limpar_revisao(prefixo):
+    for k in [k for k in st.session_state.keys() if str(k).startswith(prefixo + "_")]:
+        del st.session_state[k]
 
 
 # ================= Páginas =================
@@ -213,16 +240,27 @@ def pagina_nota():
         st.info("Para abrir sempre já logado, adicione esta página à tela inicial **agora** "
                 "(iPhone: Compartilhar → Adicionar à Tela de Início). "
                 "Se já tinha um atalho antigo, apague e crie de novo.")
+    if st.session_state.pop("msg_salvo", False):
+        st.success("Compra salva.")
     st.subheader("Ler cupom fiscal")
     modo = st.radio("Como ler?", ["📷 Câmera", "🔗 Colar link", "🖼️ Foto"],
                     horizontal=True, label_visibility="collapsed")
 
     if modo == "📷 Câmera":
-        st.caption("Aponte para o QR Code e segure firme. Ele lê sozinho.")
-        lido = qr_scanner(key="scanner")
-        if lido and lido.get("ts") != st.session_state.get("ultimo_scan"):
-            st.session_state.ultimo_scan = lido["ts"]
-            processar_link(lido.get("texto"))
+        if not st.session_state.get("camera_on"):
+            if st.button("📷 Abrir câmera", type="primary", use_container_width=True):
+                st.session_state.camera_on = True
+                st.rerun()
+        else:
+            st.caption("Aponte para o QR Code e segure firme. Ele lê sozinho.")
+            lido = qr_scanner(key="scanner")
+            if st.button("Fechar câmera", use_container_width=True):
+                st.session_state.camera_on = False
+                st.rerun()
+            if lido and lido.get("ts") != st.session_state.get("ultimo_scan"):
+                st.session_state.ultimo_scan = lido["ts"]
+                st.session_state.camera_on = False
+                processar_link(lido.get("texto"))
 
     elif modo == "🔗 Colar link":
         url = st.text_input("Link do QR Code", placeholder="https://www.nfce.fazenda.sp.gov.br/...")
@@ -250,7 +288,8 @@ def pagina_nota():
     if nota.get("desconto"):
         st.caption(f"Desconto na nota: {brl(nota['desconto'])}")
 
-    df = editor_revisao(st.session_state.rev_nota, key=f"ed_{nota.get('chave')}")
+    prefixo = f"rn{nota.get('chave') or ''}"
+    itens_rev = revisao_itens(st.session_state.rev_nota, prefixo)
     c1, c2 = st.columns(2)
     if c1.button("💾 Salvar compra", type="primary", use_container_width=True):
         compra = {
@@ -260,16 +299,19 @@ def pagina_nota():
             "registrado_por": st.session_state.usuario, "url": nota.get("url"),
         }
         try:
-            db.salvar_compra(compra, itens_do_editor(df))
+            db.salvar_compra(compra, itens_rev)
         except Exception as e:
             st.error(f"Erro ao salvar: {e}")
             return
         st.session_state.pop("nota", None)
         st.session_state.pop("rev_nota", None)
-        st.success("Compra salva.")
+        limpar_revisao(prefixo)
+        st.session_state.msg_salvo = True
+        st.rerun()
     if c2.button("Descartar", use_container_width=True):
         st.session_state.pop("nota", None)
         st.session_state.pop("rev_nota", None)
+        limpar_revisao(prefixo)
         st.rerun()
 
 
@@ -318,14 +360,16 @@ def pagina_manual():
                   "valor_total": r.valor_total, "valor_unitario": r.valor_total / (r.quantidade or 1),
                   "unidade": ""} for r in validos.itertuples()]
         with st.spinner("Organizando os itens..."):
+            limpar_revisao("rm")
             st.session_state.rev_manual = montar_revisao(itens)
 
     if "rev_manual" in st.session_state:
-        df = editor_revisao(st.session_state.rev_manual, key="ed_manual")
+        itens_rev = revisao_itens(st.session_state.rev_manual, "rm")
         if st.button("💾 Salvar compra", type="primary"):
-            db.salvar_compra(cabecalho(df.valor_total.sum()), itens_do_editor(df))
+            db.salvar_compra(cabecalho(sum(i["valor_total"] for i in itens_rev)), itens_rev)
             for k in ("rev_manual", "manual_itens"):
                 st.session_state.pop(k, None)
+            limpar_revisao("rm")
             st.success("Compra salva.")
 
 
@@ -559,29 +603,32 @@ def pagina_produtos():
     df["itens"] = df.id.map(uso).fillna(0).astype(int)
 
     st.subheader("Produtos")
-    busca = st.text_input("Buscar")
-    vis = df[df.nome.str.contains(busca, case=False, na=False)] if busca else df
-    editado = st.data_editor(vis, key="ed_prod", hide_index=True, use_container_width=True,
-                             disabled=["id", "itens"], column_config={
-                                 "id": None, "nome": st.column_config.TextColumn("Nome padrão", required=True),
-                                 "categoria": st.column_config.SelectboxColumn(
-                                     "Categoria", options=categorias, required=True),
-                                 "itens": "Itens"})
-    if st.button("Salvar alterações"):
-        orig = vis.set_index("id")
-        erros = 0
-        for r in editado.itertuples():
-            if (r.nome, r.categoria) != (orig.at[r.id, "nome"], orig.at[r.id, "categoria"]):
+    contagem = df.groupby("categoria").size()
+    filtro = st.pills("Filtrar por categoria", [c for c in categorias if c in contagem.index],
+                      selection_mode="single", key="filtro_cat",
+                      format_func=lambda c: f"{c} ({contagem.get(c, 0)})")
+    busca = st.text_input("Buscar produto")
+    vis = df
+    if filtro:
+        vis = vis[vis.categoria == filtro]
+    if busca:
+        vis = vis[vis.nome.str.contains(busca, case=False, na=False)]
+    st.caption(f"{len(vis)} produtos" + (" (mostrando 60, use a busca)" if len(vis) > 60 else ""))
+    for r in vis.head(60).itertuples():
+        kn, kc = f"pn_{r.id}", f"pc_{r.id}"
+        with st.expander(f"**{r.nome}** · {r.categoria} · {r.itens} itens"):
+            st.session_state.setdefault(kn, r.nome)
+            st.text_input("Nome padrão", key=kn)
+            escolher_categoria(kc, r.categoria)
+            if st.button("Salvar", key=f"ps_{r.id}", type="primary"):
                 try:
-                    db.atualizar_produto(r.id, r.nome, r.categoria)
+                    db.atualizar_produto(r.id, st.session_state[kn], categoria_escolhida(kc, r.categoria))
+                    db.limpar_cache()
+                    for k in (kn, kc):
+                        st.session_state.pop(k, None)
+                    st.rerun()
                 except Exception:
-                    erros += 1
-        db.limpar_cache()
-        if erros:
-            st.warning(f"{erros} alteração(ões) não salvas: já existe produto com esse nome. "
-                       "Use 'Juntar produtos' abaixo.")
-        else:
-            st.success("Alterações salvas.")
+                    st.warning("Já existe um produto com esse nome. Use 'Juntar produtos iguais' abaixo.")
 
     st.subheader("Juntar produtos iguais")
     nomes = df.set_index("nome").id.to_dict()
