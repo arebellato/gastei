@@ -46,9 +46,26 @@ def usuario_atual():
     return next((u for u in usuarios() if u["nome"] == st.session_state.get("usuario")), None)
 
 
+def entrar(nome):
+    st.query_params["t"] = db.criar_sessao(nome)
+    st.session_state.logado = True
+    st.session_state.usuario = nome
+    st.session_state.menu = "📷 Nota"
+    st.session_state.dica_atalho = True
+    st.rerun()
+
+
 def login():
     if st.session_state.get("logado"):
         return True
+    token = st.query_params.get("t")
+    if token:
+        nome = db.usuario_da_sessao(token)
+        if nome:
+            st.session_state.logado = True
+            st.session_state.usuario = nome
+            return True
+        del st.query_params["t"]
     st.title("🧾 Notinha")
     lista = usuarios()
     sel = st.session_state.get("login_sel")
@@ -68,7 +85,7 @@ def login():
     st.markdown(perfis.avatar_html(u["icone"], u["cor"], 110), unsafe_allow_html=True)
     st.markdown(f"<h3 style='text-align:center;margin-top:0'>{u['nome']}</h3>", unsafe_allow_html=True)
     if not u.get("senha_hash"):
-        st.info("Primeiro acesso: entre com a senha inicial do app. Depois você cria a sua.")
+        st.caption("Entre com a senha do app. Você só precisa fazer isso uma vez neste aparelho.")
     with st.form("form_login"):
         senha = st.text_input("Senha", type="password")
         entrar = st.form_submit_button("Entrar", type="primary", use_container_width=True)
@@ -78,39 +95,13 @@ def login():
         else:
             ok = senha == st.secrets["APP_SENHA"]
         if ok:
-            st.session_state.logado = True
-            st.session_state.usuario = u["nome"]
-            st.session_state.precisa_senha = not u.get("senha_hash")
-            st.rerun()
+            entrar(u["nome"])
         else:
             st.error("Senha incorreta.")
     if st.button("Trocar de perfil"):
         st.session_state.pop("login_sel", None)
         st.rerun()
     return False
-
-
-def tela_criar_senha():
-    u = usuario_atual()
-    st.title("🧾 Notinha")
-    st.markdown(perfis.avatar_html(u["icone"], u["cor"], 96), unsafe_allow_html=True)
-    st.subheader(f"Oi, {u['nome']}! Crie sua senha")
-    st.caption("A partir de agora, só ela vai abrir o seu perfil.")
-    with st.form("form_nova_senha"):
-        s1 = st.text_input("Nova senha", type="password")
-        s2 = st.text_input("Repita a senha", type="password")
-        ok = st.form_submit_button("Salvar senha", type="primary", use_container_width=True)
-    if ok:
-        if len(s1) < 4:
-            st.error("Use pelo menos 4 caracteres.")
-        elif s1 != s2:
-            st.error("As senhas não são iguais.")
-        else:
-            db.salvar_senha(u["nome"], perfis.gerar_hash(s1))
-            st.session_state.precisa_senha = False
-            st.session_state.menu = "👤 Perfil"   # já leva para escolher o ícone
-            st.session_state.boas_vindas = True
-            st.rerun()
 
 
 def seletor_aparencia(u):
@@ -140,9 +131,6 @@ def seletor_aparencia(u):
 
 
 if not login():
-    st.stop()
-if st.session_state.get("precisa_senha"):
-    tela_criar_senha()
     st.stop()
 
 
@@ -220,6 +208,11 @@ def processar_link(url):
 
 
 def pagina_nota():
+    if st.session_state.pop("dica_atalho", False):
+        st.success("Pronto, você está logado neste aparelho.")
+        st.info("Para abrir sempre já logado, adicione esta página à tela inicial **agora** "
+                "(iPhone: Compartilhar → Adicionar à Tela de Início). "
+                "Se já tinha um atalho antigo, apague e crie de novo.")
     st.subheader("Ler cupom fiscal")
     modo = st.radio("Como ler?", ["📷 Câmera", "🔗 Colar link", "🖼️ Foto"],
                     horizontal=True, label_visibility="collapsed")
@@ -626,31 +619,34 @@ def pagina_produtos():
 # ================= Perfil =================
 def pagina_perfil():
     u = usuario_atual()
-    if st.session_state.pop("boas_vindas", False):
-        st.success("Senha criada. Agora escolha seu ícone.")
     st.subheader("Seu ícone")
     seletor_aparencia(u)
 
     st.divider()
-    st.subheader("Trocar senha")
+    tem_senha = bool(u.get("senha_hash"))
+    st.subheader("Senha pessoal" + ("" if tem_senha else " (opcional)"))
+    st.caption("Sem senha pessoal, o seu perfil abre com a senha do app. "
+               "Em qualquer caso, você só digita uma vez por aparelho.")
     with st.form("form_troca_senha", clear_on_submit=True):
-        atual = st.text_input("Senha atual", type="password")
+        atual = st.text_input("Senha atual", type="password") if tem_senha else ""
         s1 = st.text_input("Nova senha", type="password")
         s2 = st.text_input("Repita a nova senha", type="password")
-        ok = st.form_submit_button("Trocar senha")
+        ok = st.form_submit_button("Salvar senha")
     if ok:
-        if not perfis.verificar(atual, u.get("senha_hash") or ""):
+        if tem_senha and not perfis.verificar(atual, u["senha_hash"]):
             st.error("Senha atual incorreta.")
         elif len(s1) < 4:
             st.error("Use pelo menos 4 caracteres.")
         elif s1 != s2:
-            st.error("As senhas novas não são iguais.")
+            st.error("As senhas não são iguais.")
         else:
             db.salvar_senha(u["nome"], perfis.gerar_hash(s1))
-            st.success("Senha trocada.")
+            st.success("Senha salva.")
 
     st.divider()
-    if st.button("Sair", use_container_width=True):
+    if st.button("Sair deste aparelho", use_container_width=True):
+        db.apagar_sessao(st.query_params.get("t"))
+        st.query_params.clear()
         for k in list(st.session_state.keys()):
             del st.session_state[k]
         st.rerun()

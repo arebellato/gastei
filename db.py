@@ -250,3 +250,23 @@ def salvar_senha(nome, senha_hash):
 
 def salvar_aparencia(nome, icone, cor):
     cliente().table("usuarios").update({"icone": icone, "cor": cor}).eq("nome", nome).execute()
+
+
+# ---------- Sessões (login lembrado por aparelho) ----------
+def criar_sessao(nome):
+    import secrets as _s
+    token = _s.token_urlsafe(24)
+    cliente().table("sessoes").insert({"token": token, "nome": nome}).execute()
+    return token
+
+
+def usuario_da_sessao(token):
+    if not token:
+        return None
+    rows = cliente().table("sessoes").select("nome").eq("token", token).limit(1).execute().data
+    return rows[0]["nome"] if rows else None
+
+
+def apagar_sessao(token):
+    if token:
+        cliente().table("sessoes").delete().eq("token", token).execute()
