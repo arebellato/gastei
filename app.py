@@ -47,11 +47,14 @@ def usuario_atual():
 
 
 def entrar(nome):
-    st.query_params["t"] = db.criar_sessao(nome)
+    try:
+        st.query_params["t"] = db.criar_sessao(nome)
+        st.session_state.dica_atalho = True
+    except Exception as e:
+        st.session_state.erro_sessao = f"{type(e).__name__}: {e}"
     st.session_state.logado = True
     st.session_state.usuario = nome
     st.session_state.menu = "📷 Nota"
-    st.session_state.dica_atalho = True
     st.rerun()
 
 
@@ -235,6 +238,10 @@ def processar_link(url):
 
 
 def pagina_nota():
+    if erro := st.session_state.pop("erro_sessao", None):
+        st.warning("Você entrou, mas não consegui lembrar este aparelho. "
+                   "Confira se o script schema_sessoes.sql foi rodado no Supabase "
+                   f"e se o db.py do GitHub é o mais novo. Detalhe: {erro}")
     if st.session_state.pop("dica_atalho", False):
         st.success("Pronto, você está logado neste aparelho.")
         st.info("Para abrir sempre já logado, adicione esta página à tela inicial **agora** "
