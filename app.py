@@ -91,8 +91,8 @@ def login():
         st.caption("Entre com a senha do app. Você só precisa fazer isso uma vez neste aparelho.")
     with st.form("form_login"):
         senha = st.text_input("Senha", type="password")
-        entrar = st.form_submit_button("Entrar", type="primary", use_container_width=True)
-    if entrar:
+        clicou_entrar = st.form_submit_button("Entrar", type="primary", use_container_width=True)
+    if clicou_entrar:
         if u.get("senha_hash"):
             ok = perfis.verificar(senha, u["senha_hash"])
         else:
